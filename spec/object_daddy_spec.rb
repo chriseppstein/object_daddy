@@ -405,6 +405,31 @@ describe ObjectDaddy, "when spawning a class instance" do
       end
     end
   end
+  
+  describe "using generation strategies" do
+    it "should use the strategies generator" do
+      @class.generation_strategy_for :boom do
+        generator_for :bass do |prev| 'blip'; end
+      end
+      @class.spawn(:boom).bass.should == 'blip'
+    end
+    
+    it "should inherit from the base generator" do
+      @class.generation_strategy_for :boom do
+        generator_for :bass do |prev| 'blip'; end
+      end
+      @class.generator_for :bump do |prev| 'grind'; end
+      @class.spawn(:boom).bump.should == 'grind'
+    end
+     
+    it "should override base generator" do
+      @class.generation_strategy_for :boom do
+        generator_for :bass do |prev| 'blip'; end
+      end
+      @class.generator_for :bass do |prev| 'grind'; end
+      @class.spawn(:boom).bass.should == 'blip'
+    end
+  end
 end
 
 # conditionally do Rails tests, if we were included as a plugin

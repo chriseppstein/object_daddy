@@ -13,14 +13,18 @@ module ObjectDaddy
   end
     
   module ClassMethods
-    attr_accessor :exemplars_generated, :exemplar_path, :generators
+    attr_accessor :exemplars_generated, :exemplar_path, :generators, :generation_strategies
     attr_reader :presence_validated_attributes
     protected :exemplars_generated=
     
     # create a valid instance of this class, using any known generators
-    def spawn(args = {})
+    def spawn(*args)
+      strategy = unless args.first.is_a? Hash
+        args.shift
+      end
+      args = args.shift || {}
       gather_exemplars
-      (generators || {}).each_pair do |handle, gen_data|
+      (generators_for(strategy) || {}).each_pair do |handle, gen_data|
         next if args[handle]
         generator = gen_data[:generator]
         if generator[:block]
@@ -91,6 +95,19 @@ module ObjectDaddy
       end
     end
     
+    def generation_strategy_for(name, &strategy)
+      @current_strategy = name
+      instance_eval &strategy
+    ensure
+      @current_strategy = nil
+    end
+    
+    def generators_for(strategy)
+      return generators unless strategy
+      raise ArgumentError, "generation strategy [#{strategy}] is not defined" unless generation_strategies[strategy]
+      generators.merge(generation_strategies[strategy])
+    end
+    
     def gather_exemplars
       return if exemplars_generated
       if superclass.respond_to?(:gather_exemplars)
@@ -119,10 +136,16 @@ module ObjectDaddy
       string.gsub(/([a-z])([A-Z])/, '\1_\2').downcase
     end
     
-    def record_generator_for(handle, generator)
+    def record_generator_for(handle, generator, strategy = @current_strategy ||= :base)
+      self.generation_strategies ||= {}
+      generation_strategies[strategy] ||= {}
       self.generators ||= {}
-      raise ArgumentError, "a generator for attribute [:#{handle}] has already been specified" if (generators[handle] || {})[:source] == self
-      generators[handle] = { :generator => generator, :source => self }
+      if (generation_strategies[strategy][handle] || {})[:source] == self
+        raise ArgumentError, "a generator for attribute [:#{handle}] has already been specified"
+      end
+      gen = { :generator => generator, :source => self }
+      generators[handle] = gen if strategy == :base
+      generation_strategies[strategy][handle] = gen
     end
   end
   
@@ -139,14 +162,14 @@ module ObjectDaddy
       validates_presence_of_without_object_daddy(*attr_names)
     end
     
-    def generate(args = {})
-      obj = spawn(args)
+    def generate(*args)
+      obj = spawn(*args)
       obj.save
       obj
     end
     
-    def generate!(args = {})
-      obj = spawn(args)
+    def generate!(*args)
+      obj = spawn(*args)
       obj.save!
       obj
     end
