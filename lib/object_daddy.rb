@@ -132,7 +132,7 @@ module ObjectDaddy
       end
       
       path = File.join(exemplar_path, "#{underscore(name)}_exemplar.rb")
-      load(path) if File.exists?(path)
+      require(path) if File.exists?(path)
       self.exemplars_generated = true
     end
     
