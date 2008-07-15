@@ -36,8 +36,8 @@ module ObjectDaddy
           end
         elsif generator[:method]
           args[handle] = send(generator[:method])
-        elsif generator[:class]
-          args[handle] = generator[:class].next
+        elsif generator[:class] || generator[:object]
+          args[handle] = (generator[:class] || generator[:object]).next
         end
       end
       if presence_validated_attributes and !presence_validated_attributes.empty?
@@ -60,6 +60,7 @@ module ObjectDaddy
     # generator_for :foo, value
     # generator_for :foo => value
     # generator_for :foo, :class => GeneratorClass
+    # generator_for :foo, :object => Generator instance
     # generator_for :foo, :method => :method_name
     def generator_for(handle, args = {}, &block)
       if handle.is_a?(Hash)
@@ -85,13 +86,16 @@ module ObjectDaddy
       elsif args[:class]
         raise ArgumentError, "generator class [#{args[:class].name}] does not have a :next method" unless args[:class].respond_to?(:next)
         record_generator_for(handle, :class => args[:class])
+      elsif args[:object]
+        raise ArgumentError, "generator instance [#{args[:object]}] does not have a :next method" unless args[:object].respond_to?(:next)
+        record_generator_for(handle, :object => args[:object])
       elsif block
         raise ArgumentError, "generator block must take an optional single argument" unless (-1..1).include?(block.arity)  # NOTE: lambda {} has an arity of -1, while lambda {||} has an arity of 0
         h = { :block => block }
         h[:start] = args[:start] if args[:start]
         record_generator_for(handle, h)
       else
-        raise ArgumentError, "a block, :class generator, :method generator, or value must be specified to generator_for"
+        raise ArgumentError, "a block, :class generator, :method generator, :object generator, or value must be specified to generator_for"
       end
     end
     
