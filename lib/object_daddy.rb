@@ -78,8 +78,12 @@ module ObjectDaddy
       
       unless args.is_a?(Hash)
         unless block
-          retval = args
-          block = lambda { retval }  # lambda { args } results in returning the empty hash that args gets changed to
+          retval = args #capture args before it becomes a hash
+          block = if generator?(args)
+            lambda {retval.next}
+          else
+            lambda {retval}
+          end
         end
         args = {}  # args is assumed to be a hash for the rest of the method
       end
@@ -103,6 +107,10 @@ module ObjectDaddy
       end
     end
     
+    def generator?(args)
+      args.class.to_s =~ /Generator/
+    end
+
     def generation_strategy_for(name, &strategy)
       @current_strategy = name
       instance_eval &strategy
