@@ -51,7 +51,11 @@ module ObjectDaddy
         end
         missing.each {|a| args[a.name] = a.class_name.constantize.generate }
       end
-      new(args)
+      returning(new) do |record|
+        args.each do |k, v|
+          record.send("#{k}=", v)
+        end
+      end
     end
 
     # register a generator for an attribute of this class
